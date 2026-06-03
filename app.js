@@ -224,12 +224,16 @@ function confirmMeeting() {
     }).then(() => {
         triggerAutomatedEmail(slot, { name, topic, info });
         
+        // Encode text properly for web URLs
         const eventTitle = encodeURIComponent(`${topic} with ${slot.hostName}`);
         const eventLocation = encodeURIComponent(slot.location);
         const eventDetails = encodeURIComponent(`DSP Office Hours meeting regarding ${topic}.`);
         
-        const startObj = new Date(`${slot.date} ${slot.startTime}`);
-        const endObj = new Date(`${slot.date} ${slot.endTime}`);
+        // FIX: Use exact mathematical timestamps to prevent browser parsing errors
+        const startObj = new Date(slot.startTimestamp);
+        const endObj = new Date(slot.startTimestamp + (30 * 60000)); // Adds exactly 30 minutes
+        
+        // Formatter for Google Calendar
         const formatWebDate = (d) => d.toISOString().replace(/-|:|\.\d+/g, '');
 
         // 1. Apple/Default (.ics file)
@@ -242,8 +246,10 @@ function confirmMeeting() {
         const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${formatWebDate(startObj)}/${formatWebDate(endObj)}&details=${eventDetails}&location=${eventLocation}`;
         document.getElementById('google-calendar-btn').href = googleUrl;
 
-        // 3. Outlook Web Link
-        const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${eventTitle}&startdt=${startObj.toISOString()}&enddt=${endObj.toISOString()}&body=${eventDetails}&location=${eventLocation}`;
+        // 3. Outlook Web Link (Using stricter Office 365 formatting)
+        const startIso = encodeURIComponent(startObj.toISOString());
+        const endIso = encodeURIComponent(endObj.toISOString());
+        const outlookUrl = `https://outlook.office.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${eventTitle}&startdt=${startIso}&enddt=${endIso}&body=${eventDetails}&location=${eventLocation}`;
         document.getElementById('outlook-calendar-btn').href = outlookUrl;
 
         // Populate the Success Modal Details
@@ -297,8 +303,9 @@ function triggerAutomatedEmail(slotInfo, studentData) {
 
 // --- 9. CALENDAR GENERATOR (.ics) ---
 function generateICS(slot, topic) {
-    const start = new Date(`${slot.date} ${slot.startTime}`);
-    const end = new Date(`${slot.date} ${slot.endTime}`);
+    // FIX: Using exact mathematical timestamps here too
+    const start = new Date(slot.startTimestamp);
+    const end = new Date(slot.startTimestamp + (30 * 60000));
 
     const formatDate = (date) => {
         return date.toISOString().replace(/-|:|\.\d+/g, '');
