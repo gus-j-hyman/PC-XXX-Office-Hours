@@ -1,14 +1,14 @@
 // --- Configuration & State ---
 const ADMIN_PASSWORD = "BetaEta#1";
 
-// Hardcoded authorized admins
+// Hardcoded authorized admins with updated emails
 const ADMIN_USERS = [
     { id: "admin_1", name: "Gus Hyman", email: "gus.j.hyman@gmail.com" },
-    { id: "admin_2", name: "Gus Hyman (UFL)", email: "gushyman@ufl.edu" }
+    { id: "admin_2", name: "Fake Gus", email: "gushyman@ufl.edu" }
 ];
 
 // Master state for timeslots
-let timeslots = []; // Array of objects: { id, startTime, endTime, hostName, adminEmail, location, isBooked }
+let timeslots = []; // Array of objects: { id, date, startTime, endTime, hostName, adminEmail, location, isBooked }
 
 // --- Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -43,7 +43,7 @@ function verifyAdmin() {
 
 function populateAdminDropdown() {
     const select = document.getElementById("admin-host");
-    select.innerHTML = ""; // Clear existing options if any
+    select.innerHTML = ""; // Clear existing options
     ADMIN_USERS.forEach(admin => {
         const option = document.createElement("option");
         option.value = admin.id;
@@ -54,19 +54,26 @@ function populateAdminDropdown() {
 
 // --- Slot Generation Logic ---
 function generateTimeslots() {
+    const dateStr = document.getElementById("admin-date").value;
     const startTimeStr = document.getElementById("admin-start").value;
     const endTimeStr = document.getElementById("admin-end").value;
     const adminId = document.getElementById("admin-host").value;
     const location = document.getElementById("admin-location").value;
 
-    if (!startTimeStr || !endTimeStr || !location) {
-        alert("Please fill out all fields.");
+    if (!dateStr || !startTimeStr || !endTimeStr || !location) {
+        alert("Please fill out all fields, including the date.");
         return;
     }
 
     const selectedAdmin = ADMIN_USERS.find(a => a.id === adminId);
 
-    // Convert times to Date objects for math (using a dummy date)
+    // Format the date for clean UI display (e.g., "Oct 24, 2026")
+    const dateObj = new Date(dateStr + "T00:00:00");
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+    });
+
+    // Convert times to Date objects for math (using a dummy base date)
     const baseDate = "1970-01-01T";
     let current = new Date(baseDate + startTimeStr + ":00");
     const end = new Date(baseDate + endTimeStr + ":00");
@@ -86,6 +93,7 @@ function generateTimeslots() {
 
         timeslots.push({
             id: 'slot_' + Date.now() + Math.random().toString(36).substr(2, 9),
+            date: formattedDate,
             startTime: formatTime(current),
             endTime: formatTime(next),
             hostName: selectedAdmin.name,
@@ -98,7 +106,7 @@ function generateTimeslots() {
         generatedCount++;
     }
 
-    alert(`Successfully generated ${generatedCount} time slots.`);
+    alert(`Successfully generated ${generatedCount} time slots for ${formattedDate}.`);
     closeModal("admin-dashboard-modal");
     renderCalendar();
 }
@@ -122,13 +130,16 @@ function renderCalendar() {
 
     availableSlots.forEach(slot => {
         const card = document.createElement("div");
-        card.className = "bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-5 cursor-pointer border-l-4 border-l-dsp-gold";
+        card.className = "bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-5 cursor-pointer border-l-4 border-l-dsp-gold flex flex-col justify-between";
         card.onclick = () => initBooking(slot.id);
 
         card.innerHTML = `
-            <div class="text-lg font-bold text-dsp-purple mb-2">🕒 ${slot.startTime} - ${slot.endTime}</div>
-            <div class="text-sm text-gray-700 mb-1"><strong>Host:</strong> ${slot.hostName}</div>
-            <div class="text-sm text-gray-700"><strong>Room:</strong> ${slot.location}</div>
+            <div>
+                <div class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1">📅 ${slot.date}</div>
+                <div class="text-lg font-bold text-dsp-purple mb-3">🕒 ${slot.startTime} - ${slot.endTime}</div>
+                <div class="text-sm text-gray-700 mb-1"><strong>Host:</strong> ${slot.hostName}</div>
+                <div class="text-sm text-gray-700"><strong>Room:</strong> ${slot.location}</div>
+            </div>
             <div class="mt-4 text-sm text-dsp-gold font-semibold tracking-wide uppercase group-hover:underline">Book Slot &rarr;</div>
         `;
         grid.appendChild(card);
@@ -147,7 +158,7 @@ function initBooking(slotId) {
 
     // Set Meta Data
     document.getElementById("book-slot-id").value = slot.id;
-    document.getElementById("modal-slot-info").innerText = `Booking with ${slot.hostName} in ${slot.location} at ${slot.startTime}`;
+    document.getElementById("modal-slot-info").innerText = `Booking with ${slot.hostName} on ${slot.date} at ${slot.startTime}`;
 
     openModal("booking-modal");
 }
@@ -195,6 +206,7 @@ function triggerAutomatedEmail(slotInfo, studentData) {
             You have a new booking!
             
             Host: ${slotInfo.hostName}
+            Date: ${slotInfo.date}
             Time: ${slotInfo.startTime} - ${slotInfo.endTime}
             Location: ${slotInfo.location}
             
@@ -205,11 +217,9 @@ function triggerAutomatedEmail(slotInfo, studentData) {
         `
     };
 
-    // In a production app, this would be an API POST request to your mailer backend (e.g., SendGrid, AWS SES)
     console.log("=== SECURE EMAIL DISPATCHED ===");
     console.log(`Routing to strictly: ${emailPayload.to}`);
     console.log(`Payload Subject: ${emailPayload.subject}`);
     console.log(`Payload Body: ${emailPayload.body}`);
     console.log("===============================");
 }
- 
