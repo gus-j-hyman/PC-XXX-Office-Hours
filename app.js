@@ -1,31 +1,32 @@
-// --- Configuration & State ---
+// --- 1. CONFIGURATION & STATE ---
 const ADMIN_PASSWORD = "BetaEta#1";
 
-// Hardcoded authorized admins with updated emails
+// CRITICAL: You must replace this with your actual Public Key from EmailJS Account settings
+emailjs.init("aKaqwihPbn46q3V25"); 
+
+// The Updated Roster of 6 Admins
 const ADMIN_USERS = [
-    { id: "admin_1", name: "Gus Hyman", email: "gus.j.hyman@gmail.com" },
-    { id: "admin_2", name: "Fake Gus", email: "gushyman@ufl.edu" }
+    { id: "admin_1", name: "Brother Hyman", email: "g.hyman@ufdsp.com" },
+    { id: "admin_2", name: "Brother Wechsler", email: "pledgedevelopment@ufdsp.com" },
+    { id: "admin_3", name: "Brother Hoyos", email: "a.hoyos@ufdsp.com" },
+    { id: "admin_4", name: "Brother Thomas", email: "j.thomas@ufdsp.com" },
+    { id: "admin_5", name: "Brother Schneider", email: "z.schneider@ufdsp.com" },
+    { id: "admin_6", name: "Brother Haris", email: "s.haris@ufdsp.com" }
 ];
 
-// INITIALIZE EMAILJS - Replace with your actual Public Key from EmailJS
-// emailjs.init("YOUR_PUBLIC_KEY_HERE"); 
+let timeslots = []; // Array to hold generated slots
 
-// Master state for timeslots
-let timeslots = []; 
-
-// --- Initialization & Local Storage ---
+// --- 2. INITIALIZATION & LOCAL STORAGE ---
 document.addEventListener("DOMContentLoaded", () => {
     loadSlots();
     populateAdminDropdown();
     renderCalendar();
 });
 
-// Save to browser memory so slots survive a page refresh
 function saveSlots() {
     localStorage.setItem('dsp_office_hours_slots', JSON.stringify(timeslots));
 }
 
-// Load from browser memory on page load
 function loadSlots() {
     const saved = localStorage.getItem('dsp_office_hours_slots');
     if (saved) {
@@ -33,7 +34,7 @@ function loadSlots() {
     }
 }
 
-// --- UI / Modal Controls ---
+// --- 3. UI / MODAL CONTROLS ---
 function openModal(modalId) {
     document.getElementById(modalId).classList.remove("hidden");
 }
@@ -42,7 +43,6 @@ function closeModal(modalId) {
     document.getElementById(modalId).classList.add("hidden");
 }
 
-// --- Admin Authentication & Routing ---
 function openAdminAuth() {
     document.getElementById("admin-password").value = "";
     openModal("admin-auth-modal");
@@ -69,7 +69,7 @@ function populateAdminDropdown() {
     });
 }
 
-// --- Slot Generation Logic ---
+// --- 4. SLOT GENERATION LOGIC ---
 function generateTimeslots() {
     const dateStr = document.getElementById("admin-date").value;
     const startTimeStr = document.getElementById("admin-start").value;
@@ -104,7 +104,6 @@ function generateTimeslots() {
         
         if (next > end) break;
 
-        // Create a real timestamp for exact expiration logic
         const slotStartObj = new Date(`${dateStr}T${current.toTimeString().split(' ')[0]}`);
 
         timeslots.push({
@@ -112,7 +111,7 @@ function generateTimeslots() {
             date: formattedDate,
             startTime: formatTime(current),
             endTime: formatTime(next),
-            startTimestamp: slotStartObj.getTime(), // Hidden data for expiration
+            startTimestamp: slotStartObj.getTime(), 
             hostName: selectedAdmin.name,
             adminEmail: selectedAdmin.email,
             location: location,
@@ -123,7 +122,7 @@ function generateTimeslots() {
         generatedCount++;
     }
 
-    saveSlots(); // Save newly generated slots to memory
+    saveSlots(); 
 
     alert(`Successfully generated ${generatedCount} time slots for ${formattedDate}.`);
     closeModal("admin-dashboard-modal");
@@ -134,18 +133,19 @@ function formatTime(dateObj) {
     return dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-// --- Calendar Rendering & Expiration Logic ---
+// --- 5. CALENDAR RENDERING ---
 function renderCalendar() {
     const grid = document.getElementById("calendar-grid");
     grid.innerHTML = ""; 
 
     const currentTime = Date.now();
 
-    // Filter out booked slots AND slots that have already passed in time
     const availableSlots = timeslots.filter(slot => {
         const isFuture = slot.startTimestamp > currentTime;
         return !slot.isBooked && isFuture;
     });
+
+    availableSlots.sort((a, b) => a.startTimestamp - b.startTimestamp);
 
     if (availableSlots.length === 0) {
         grid.innerHTML = `<p class="col-span-full text-gray-500 italic text-center py-8">No available timeslots currently. Check back later.</p>`;
@@ -170,7 +170,7 @@ function renderCalendar() {
     });
 }
 
-// --- Booking & Exclusivity Logic ---
+// --- 6. BOOKING LOGIC ---
 function initBooking(slotId) {
     const slot = timeslots.find(s => s.id === slotId);
     if (!slot) return;
@@ -196,29 +196,42 @@ function confirmMeeting() {
         return;
     }
 
+    // Disable button to prevent double clicks
+    const confirmBtn = document.getElementById("confirm-btn");
+    confirmBtn.innerText = "Booking...";
+    confirmBtn.disabled = true;
+
     const slotIndex = timeslots.findIndex(s => s.id === slotId);
     
-    // Check if slot was booked in another tab, or time expired while modal was open
     if (slotIndex === -1 || timeslots[slotIndex].isBooked || timeslots[slotIndex].startTimestamp <= Date.now()) {
         alert("Sorry, this slot is no longer available.");
         closeModal("booking-modal");
+        resetBtn(confirmBtn);
         renderCalendar();
         return;
     }
 
     timeslots[slotIndex].isBooked = true;
-    saveSlots(); // Save the updated booked status to memory
+    saveSlots(); 
 
+    // Fire the email
     triggerAutomatedEmail(timeslots[slotIndex], { name, topic, info });
 
-    alert("Meeting successfully booked!");
+    alert("Meeting successfully booked! An email has been sent to the host.");
     closeModal("booking-modal");
+    resetBtn(confirmBtn);
     renderCalendar(); 
 }
 
-// --- Real Notification Logic using EmailJS ---
+function resetBtn(btn) {
+    btn.innerText = "Confirm Meeting";
+    btn.disabled = false;
+}
+
+// --- 7. REAL EMAILJS NOTIFICATION LOGIC ---
 function triggerAutomatedEmail(slotInfo, studentData) {
     
+    // Packages data exactly for your EmailJS Template
     const templateParams = {
         to_email: slotInfo.adminEmail, 
         host_name: slotInfo.hostName,
@@ -230,20 +243,16 @@ function triggerAutomatedEmail(slotInfo, studentData) {
         notes: studentData.info || "None provided"
     };
 
-    // Replace these with your actual Service ID and Template ID from EmailJS
-    const serviceID = "YOUR_SERVICE_ID_HERE";
-    const templateID = "YOUR_TEMPLATE_ID_HERE";
+    // Your specific Service and Template IDs
+    const serviceID = "service_txc2r2t";
+    const templateID = "template_dpi2ic9";
 
-    // Uncomment this once you have EmailJS configured
-    /*
+    // Send the email request
     emailjs.send(serviceID, templateID, templateParams)
         .then((response) => {
             console.log("SUCCESS! Real email sent.", response.status, response.text);
         }, (error) => {
             console.error("FAILED to send email...", error);
-            alert("There was an issue sending the confirmation email, but your slot is booked.");
+            alert("The slot is booked, but there was a network error sending the email notification.");
         });
-    */
-   
-    console.log("Simulated Email Sent to: " + templateParams.to_email);
 }
