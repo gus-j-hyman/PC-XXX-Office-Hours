@@ -19,6 +19,9 @@
     </script>
     
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
 
@@ -107,8 +110,7 @@
                 </div>
                 
                 <label class="block text-sm font-semibold mb-1">Host Admin</label>
-                <select id="admin-host" class="w-full border p-2 rounded mb-4">
-                    </select>
+                <select id="admin-host" class="w-full border p-2 rounded mb-4"></select>
                 
                 <label class="block text-sm font-semibold mb-1">Room Location</label>
                 <input type="text" id="admin-location" class="w-full border p-2 rounded mb-4" placeholder="e.g., Heavener Hall 101 or Zoom Link">
