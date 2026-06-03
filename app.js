@@ -14,7 +14,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // --- 2. STATE & EMAILJS INIT ---
-// CRITICAL: Replace this with your actual Public Key from EmailJS Account settings
 emailjs.init("aKaqwihPbn46q3V25"); 
 
 const ADMIN_PASSWORD = "BetaEta#1";
@@ -28,7 +27,7 @@ const ADMIN_USERS = [
     { id: "admin_6", name: "Brother Haris", email: "s.haris@ufdsp.com" }
 ];
 
-let timeslots = []; // Local array updated by Firebase
+let timeslots = []; 
 
 // --- 3. INITIALIZATION & REAL-TIME LISTENER ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -36,13 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
     listenToDatabase();
 });
 
-// Watch the database for live updates
 function listenToDatabase() {
     db.collection("timeslots").onSnapshot((querySnapshot) => {
         timeslots = [];
         querySnapshot.forEach((doc) => {
             let slotData = doc.data();
-            slotData.id = doc.id; // Store the unique database ID
+            slotData.id = doc.id; 
             timeslots.push(slotData);
         });
         renderCalendar();
@@ -120,7 +118,6 @@ function generateTimeslots() {
 
         const slotStartObj = new Date(`${dateStr}T${current.toTimeString().split(' ')[0]}`);
 
-        // Add each slot directly to Firebase
         db.collection("timeslots").add({
             date: formattedDate,
             startTime: formatTime(current),
@@ -151,13 +148,11 @@ function renderCalendar() {
 
     const currentTime = Date.now();
 
-    // Filter out booked slots and expired slots
     const availableSlots = timeslots.filter(slot => {
         const isFuture = slot.startTimestamp > currentTime;
         return !slot.isBooked && isFuture;
     });
 
-    // Sort chronologically
     availableSlots.sort((a, b) => a.startTimestamp - b.startTimestamp);
 
     if (availableSlots.length === 0) {
@@ -213,7 +208,6 @@ function confirmMeeting() {
     confirmBtn.innerText = "Booking...";
     confirmBtn.disabled = true;
 
-    // Local check before hitting the database
     const slot = timeslots.find(s => s.id === slotId);
     if (!slot || slot.isBooked || slot.startTimestamp <= Date.now()) {
         alert("Sorry, this slot is no longer available.");
@@ -222,7 +216,6 @@ function confirmMeeting() {
         return;
     }
 
-    // Update the database to lock the booking in for everyone
     db.collection("timeslots").doc(slotId).update({
         isBooked: true,
         studentName: name,
@@ -231,13 +224,29 @@ function confirmMeeting() {
     }).then(() => {
         triggerAutomatedEmail(slot, { name, topic, info });
         
-        // 1. Generate the Apple Calendar Link
-        const icsLink = generateICS(slot, topic);
-        const calendarBtn = document.getElementById('apple-calendar-btn');
-        calendarBtn.href = icsLink;
-        calendarBtn.download = `DSP_Office_Hours_${slot.hostName.replace(/\s+/g, '_')}.ics`;
+        const eventTitle = encodeURIComponent(`${topic} with ${slot.hostName}`);
+        const eventLocation = encodeURIComponent(slot.location);
+        const eventDetails = encodeURIComponent(`DSP Office Hours meeting regarding ${topic}.`);
+        
+        const startObj = new Date(`${slot.date} ${slot.startTime}`);
+        const endObj = new Date(`${slot.date} ${slot.endTime}`);
+        const formatWebDate = (d) => d.toISOString().replace(/-|:|\.\d+/g, '');
 
-        // 2. Populate the Success Modal Details
+        // 1. Apple/Default (.ics file)
+        const icsLink = generateICS(slot, topic);
+        const appleBtn = document.getElementById('apple-calendar-btn');
+        appleBtn.href = icsLink;
+        appleBtn.download = `DSP_Office_Hours_${slot.hostName.replace(/\s+/g, '_')}.ics`;
+
+        // 2. Google Calendar Link
+        const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${formatWebDate(startObj)}/${formatWebDate(endObj)}&details=${eventDetails}&location=${eventLocation}`;
+        document.getElementById('google-calendar-btn').href = googleUrl;
+
+        // 3. Outlook Web Link
+        const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${eventTitle}&startdt=${startObj.toISOString()}&enddt=${endObj.toISOString()}&body=${eventDetails}&location=${eventLocation}`;
+        document.getElementById('outlook-calendar-btn').href = outlookUrl;
+
+        // Populate the Success Modal Details
         document.getElementById('success-details').innerHTML = `
             <p class="mb-1"><strong>Host:</strong> ${slot.hostName}</p>
             <p class="mb-1"><strong>Date:</strong> ${slot.date}</p>
@@ -245,7 +254,7 @@ function confirmMeeting() {
             <p><strong>Room:</strong> ${slot.location}</p>
         `;
 
-        // 3. Switch Modals
+        // Switch Modals
         closeModal("booking-modal");
         openModal("success-modal");
         resetBtn(confirmBtn);
@@ -288,11 +297,9 @@ function triggerAutomatedEmail(slotInfo, studentData) {
 
 // --- 9. CALENDAR GENERATOR (.ics) ---
 function generateICS(slot, topic) {
-    // Combine date and time strings into actual Date objects
     const start = new Date(`${slot.date} ${slot.startTime}`);
     const end = new Date(`${slot.date} ${slot.endTime}`);
 
-    // Apple/Google Calendar requires a specific format: YYYYMMDDThhmmssZ
     const formatDate = (date) => {
         return date.toISOString().replace(/-|:|\.\d+/g, '');
     };
@@ -313,8 +320,6 @@ function generateICS(slot, topic) {
         "END:VCALENDAR"
     ].join('\n');
 
-    // Create a virtual file link for the browser to download
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     return URL.createObjectURL(blob);
 }
- 
