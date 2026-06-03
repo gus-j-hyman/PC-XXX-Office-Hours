@@ -317,3 +317,4 @@ function generateICS(slot, topic) {
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     return URL.createObjectURL(blob);
 }
+ 
