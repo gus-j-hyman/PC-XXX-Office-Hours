@@ -212,3 +212,4 @@ function triggerAutomatedEmail(slotInfo, studentData) {
     console.log(`Payload Body: ${emailPayload.body}`);
     console.log("===============================");
 }
+ 
