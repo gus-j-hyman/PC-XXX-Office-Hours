@@ -39,7 +39,7 @@
             </div>
     </main>
 
-    <div id="booking-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4">
+    <div id="booking-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
             <div class="bg-dsp-purple text-white p-4 font-bold">Book Office Hours</div>
             <div class="p-6">
@@ -47,7 +47,7 @@
                 <input type="hidden" id="book-slot-id">
                 
                 <label class="block text-sm font-semibold mb-1">Your Name</label>
-                <input type="text" id="book-name" class="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-dsp-purple outline-none" placeholder="John Doe">
+                <input type="text" id="book-name" class="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-dsp-purple outline-none" placeholder="First and Last Name">
                 
                 <label class="block text-sm font-semibold mb-1">Meeting Topic</label>
                 <select id="book-topic" class="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-dsp-purple outline-none">
@@ -71,7 +71,7 @@
         </div>
     </div>
 
-    <div id="admin-auth-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4">
+    <div id="admin-auth-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
             <h3 class="text-lg font-bold mb-4">Admin Access</h3>
             <input type="password" id="admin-password" class="w-full border p-2 rounded mb-4" placeholder="Enter Password">
@@ -82,14 +82,18 @@
         </div>
     </div>
 
-    <div id="admin-dashboard-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4">
+    <div id="admin-dashboard-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
             <div class="bg-dsp-purple text-white p-4 font-bold flex justify-between">
                 <span>Create Availability</span>
                 <button onclick="closeModal('admin-dashboard-modal')" class="text-white hover:text-dsp-gold text-xl">&times;</button>
             </div>
             <div class="p-6">
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Date</label>
+                        <input type="date" id="admin-date" class="w-full border p-2 rounded">
+                    </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">Start Time</label>
                         <input type="time" id="admin-start" class="w-full border p-2 rounded">
