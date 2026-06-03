@@ -3,8 +3,8 @@ const ADMIN_PASSWORD = "BetaEta#1";
 
 // Hardcoded authorized admins
 const ADMIN_USERS = [
-    { id: "admin_1", name: "John Smith", email: "jsmith@example.com" },
-    { id: "admin_2", name: "Jane Doe", email: "jdoe@example.com" }
+    { id: "admin_1", name: "Gus Hyman", email: "gus.j.hyman@gmail.com" },
+    { id: "admin_2", name: "Gus Hyman (UFL)", email: "gushyman@ufl.edu" }
 ];
 
 // Master state for timeslots
@@ -43,6 +43,7 @@ function verifyAdmin() {
 
 function populateAdminDropdown() {
     const select = document.getElementById("admin-host");
+    select.innerHTML = ""; // Clear existing options if any
     ADMIN_USERS.forEach(admin => {
         const option = document.createElement("option");
         option.value = admin.id;
