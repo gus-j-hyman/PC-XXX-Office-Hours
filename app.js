@@ -256,3 +256,4 @@ function triggerAutomatedEmail(slotInfo, studentData) {
             alert("The slot is booked, but there was a network error sending the email notification.");
         });
 }
+ 
