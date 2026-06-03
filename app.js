@@ -1,10 +1,24 @@
-// --- 1. CONFIGURATION & STATE ---
-const ADMIN_PASSWORD = "BetaEta#1";
+// --- 1. FIREBASE CONFIGURATION ---
+const firebaseConfig = {
+    apiKey: "AIzaSyAKn_PK1q7XwxeOU4fdVIpokQFunt0Qe7w",
+    authDomain: "dsp-office-hours.firebaseapp.com",
+    databaseURL: "https://dsp-office-hours-default-rtdb.firebaseio.com",
+    projectId: "dsp-office-hours",
+    storageBucket: "dsp-office-hours.firebasestorage.app",
+    messagingSenderId: "383319994141",
+    appId: "1:383319994141:web:dd33d59af33413a4267bf4"
+};
 
-// CRITICAL: You must replace this with your actual Public Key from EmailJS Account settings
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// --- 2. STATE & EMAILJS INIT ---
+// CRITICAL: Replace this with your actual Public Key from EmailJS Account settings
 emailjs.init("aKaqwihPbn46q3V25"); 
 
-// The Updated Roster of 6 Admins
+const ADMIN_PASSWORD = "BetaEta#1";
+
 const ADMIN_USERS = [
     { id: "admin_1", name: "Brother Hyman", email: "g.hyman@ufdsp.com" },
     { id: "admin_2", name: "Brother Wechsler", email: "pledgedevelopment@ufdsp.com" },
@@ -14,27 +28,28 @@ const ADMIN_USERS = [
     { id: "admin_6", name: "Brother Haris", email: "s.haris@ufdsp.com" }
 ];
 
-let timeslots = []; // Array to hold generated slots
+let timeslots = []; // Local array updated by Firebase
 
-// --- 2. INITIALIZATION & LOCAL STORAGE ---
+// --- 3. INITIALIZATION & REAL-TIME LISTENER ---
 document.addEventListener("DOMContentLoaded", () => {
-    loadSlots();
     populateAdminDropdown();
-    renderCalendar();
+    listenToDatabase();
 });
 
-function saveSlots() {
-    localStorage.setItem('dsp_office_hours_slots', JSON.stringify(timeslots));
+// Watch the database for live updates
+function listenToDatabase() {
+    db.collection("timeslots").onSnapshot((querySnapshot) => {
+        timeslots = [];
+        querySnapshot.forEach((doc) => {
+            let slotData = doc.data();
+            slotData.id = doc.id; // Store the unique database ID
+            timeslots.push(slotData);
+        });
+        renderCalendar();
+    });
 }
 
-function loadSlots() {
-    const saved = localStorage.getItem('dsp_office_hours_slots');
-    if (saved) {
-        timeslots = JSON.parse(saved);
-    }
-}
-
-// --- 3. UI / MODAL CONTROLS ---
+// --- 4. UI / MODAL CONTROLS ---
 function openModal(modalId) {
     document.getElementById(modalId).classList.remove("hidden");
 }
@@ -69,7 +84,7 @@ function populateAdminDropdown() {
     });
 }
 
-// --- 4. SLOT GENERATION LOGIC ---
+// --- 5. SLOT GENERATION (WRITING TO CLOUD) ---
 function generateTimeslots() {
     const dateStr = document.getElementById("admin-date").value;
     const startTimeStr = document.getElementById("admin-start").value;
@@ -101,13 +116,12 @@ function generateTimeslots() {
     let generatedCount = 0;
     while (current < end) {
         const next = new Date(current.getTime() + 30 * 60000);
-        
         if (next > end) break;
 
         const slotStartObj = new Date(`${dateStr}T${current.toTimeString().split(' ')[0]}`);
 
-        timeslots.push({
-            id: 'slot_' + Date.now() + Math.random().toString(36).substr(2, 9),
+        // Add each slot directly to Firebase
+        db.collection("timeslots").add({
             date: formattedDate,
             startTime: formatTime(current),
             endTime: formatTime(next),
@@ -122,29 +136,28 @@ function generateTimeslots() {
         generatedCount++;
     }
 
-    saveSlots(); 
-
-    alert(`Successfully generated ${generatedCount} time slots for ${formattedDate}.`);
+    alert(`Successfully generated ${generatedCount} time slots.`);
     closeModal("admin-dashboard-modal");
-    renderCalendar();
 }
 
 function formatTime(dateObj) {
     return dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-// --- 5. CALENDAR RENDERING ---
+// --- 6. CALENDAR RENDERING ---
 function renderCalendar() {
     const grid = document.getElementById("calendar-grid");
     grid.innerHTML = ""; 
 
     const currentTime = Date.now();
 
+    // Filter out booked slots and expired slots
     const availableSlots = timeslots.filter(slot => {
         const isFuture = slot.startTimestamp > currentTime;
         return !slot.isBooked && isFuture;
     });
 
+    // Sort chronologically
     availableSlots.sort((a, b) => a.startTimestamp - b.startTimestamp);
 
     if (availableSlots.length === 0) {
@@ -170,7 +183,7 @@ function renderCalendar() {
     });
 }
 
-// --- 6. BOOKING LOGIC ---
+// --- 7. BOOKING LOGIC ---
 function initBooking(slotId) {
     const slot = timeslots.find(s => s.id === slotId);
     if (!slot) return;
@@ -196,31 +209,36 @@ function confirmMeeting() {
         return;
     }
 
-    // Disable button to prevent double clicks
     const confirmBtn = document.getElementById("confirm-btn");
     confirmBtn.innerText = "Booking...";
     confirmBtn.disabled = true;
 
-    const slotIndex = timeslots.findIndex(s => s.id === slotId);
-    
-    if (slotIndex === -1 || timeslots[slotIndex].isBooked || timeslots[slotIndex].startTimestamp <= Date.now()) {
+    // Local check before hitting the database
+    const slot = timeslots.find(s => s.id === slotId);
+    if (!slot || slot.isBooked || slot.startTimestamp <= Date.now()) {
         alert("Sorry, this slot is no longer available.");
         closeModal("booking-modal");
         resetBtn(confirmBtn);
-        renderCalendar();
         return;
     }
 
-    timeslots[slotIndex].isBooked = true;
-    saveSlots(); 
-
-    // Fire the email
-    triggerAutomatedEmail(timeslots[slotIndex], { name, topic, info });
-
-    alert("Meeting successfully booked! An email has been sent to the host.");
-    closeModal("booking-modal");
-    resetBtn(confirmBtn);
-    renderCalendar(); 
+    // Update the database to lock the booking in for everyone
+    db.collection("timeslots").doc(slotId).update({
+        isBooked: true,
+        studentName: name,
+        studentTopic: topic,
+        studentNotes: info
+    }).then(() => {
+        triggerAutomatedEmail(slot, { name, topic, info });
+        
+        alert("Meeting successfully booked!");
+        closeModal("booking-modal");
+        resetBtn(confirmBtn);
+    }).catch((error) => {
+        console.error("Error booking slot:", error);
+        alert("There was an error saving your booking. Please try again.");
+        resetBtn(confirmBtn);
+    });
 }
 
 function resetBtn(btn) {
@@ -228,10 +246,9 @@ function resetBtn(btn) {
     btn.disabled = false;
 }
 
-// --- 7. REAL EMAILJS NOTIFICATION LOGIC ---
+// --- 8. REAL EMAILJS NOTIFICATION LOGIC ---
 function triggerAutomatedEmail(slotInfo, studentData) {
     
-    // Packages data exactly for your EmailJS Template
     const templateParams = {
         to_email: slotInfo.adminEmail, 
         host_name: slotInfo.hostName,
@@ -243,11 +260,9 @@ function triggerAutomatedEmail(slotInfo, studentData) {
         notes: studentData.info || "None provided"
     };
 
-    // Your specific Service and Template IDs
     const serviceID = "service_txc2r2t";
     const templateID = "template_dpi2ic9";
 
-    // Send the email request
     emailjs.send(serviceID, templateID, templateParams)
         .then((response) => {
             console.log("SUCCESS! Real email sent.", response.status, response.text);
@@ -256,4 +271,3 @@ function triggerAutomatedEmail(slotInfo, studentData) {
             alert("The slot is booked, but there was a network error sending the email notification.");
         });
 }
- 
