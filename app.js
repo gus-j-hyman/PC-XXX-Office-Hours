@@ -231,9 +231,25 @@ function confirmMeeting() {
     }).then(() => {
         triggerAutomatedEmail(slot, { name, topic, info });
         
-        alert("Meeting successfully booked!");
+        // 1. Generate the Apple Calendar Link
+        const icsLink = generateICS(slot, topic);
+        const calendarBtn = document.getElementById('apple-calendar-btn');
+        calendarBtn.href = icsLink;
+        calendarBtn.download = `DSP_Office_Hours_${slot.hostName.replace(/\s+/g, '_')}.ics`;
+
+        // 2. Populate the Success Modal Details
+        document.getElementById('success-details').innerHTML = `
+            <p class="mb-1"><strong>Host:</strong> ${slot.hostName}</p>
+            <p class="mb-1"><strong>Date:</strong> ${slot.date}</p>
+            <p class="mb-1"><strong>Time:</strong> ${slot.startTime} - ${slot.endTime}</p>
+            <p><strong>Room:</strong> ${slot.location}</p>
+        `;
+
+        // 3. Switch Modals
         closeModal("booking-modal");
+        openModal("success-modal");
         resetBtn(confirmBtn);
+        
     }).catch((error) => {
         console.error("Error booking slot:", error);
         alert("There was an error saving your booking. Please try again.");
@@ -248,7 +264,6 @@ function resetBtn(btn) {
 
 // --- 8. REAL EMAILJS NOTIFICATION LOGIC ---
 function triggerAutomatedEmail(slotInfo, studentData) {
-    
     const templateParams = {
         to_email: slotInfo.adminEmail, 
         host_name: slotInfo.hostName,
@@ -268,6 +283,37 @@ function triggerAutomatedEmail(slotInfo, studentData) {
             console.log("SUCCESS! Real email sent.", response.status, response.text);
         }, (error) => {
             console.error("FAILED to send email...", error);
-            alert("The slot is booked, but there was a network error sending the email notification.");
         });
+}
+
+// --- 9. CALENDAR GENERATOR (.ics) ---
+function generateICS(slot, topic) {
+    // Combine date and time strings into actual Date objects
+    const start = new Date(`${slot.date} ${slot.startTime}`);
+    const end = new Date(`${slot.date} ${slot.endTime}`);
+
+    // Apple/Google Calendar requires a specific format: YYYYMMDDThhmmssZ
+    const formatDate = (date) => {
+        return date.toISOString().replace(/-|:|\.\d+/g, '');
+    };
+
+    const icsContent = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//DSP Office Hours//EN",
+        "BEGIN:VEVENT",
+        `UID:${slot.id}@dsp.com`,
+        `DTSTAMP:${formatDate(new Date())}`,
+        `DTSTART:${formatDate(start)}`,
+        `DTEND:${formatDate(end)}`,
+        `SUMMARY:${topic} with ${slot.hostName}`,
+        `LOCATION:${slot.location}`,
+        `DESCRIPTION:DSP Office Hours meeting regarding ${topic}.`,
+        "END:VEVENT",
+        "END:VCALENDAR"
+    ].join('\n');
+
+    // Create a virtual file link for the browser to download
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    return URL.createObjectURL(blob);
 }
