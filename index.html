@@ -10,8 +10,8 @@
             theme: {
                 extend: {
                     colors: {
-                        'dsp-purple': '#4B207F', // Royal Purple
-                        'dsp-gold': '#CFB53B'    // Old Gold
+                        'dsp-purple': '#4B207F', 
+                        'dsp-gold': '#CFB53B'    
                     }
                 }
             }
@@ -86,9 +86,17 @@
             <div id="success-details" class="text-gray-700 text-sm mb-6 bg-gray-50 p-4 rounded text-left border border-gray-200">
                 </div>
             
-            <a id="apple-calendar-btn" href="#" class="block w-full py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition-colors flex justify-center items-center gap-2">
-                📅 Add to Calendar
-            </a>
+            <div class="grid grid-cols-1 gap-2">
+                <a id="apple-calendar-btn" href="#" class="block w-full py-2 bg-gray-800 text-white font-bold rounded hover:bg-gray-900 transition-colors flex justify-center items-center gap-2">
+                    🍎 Apple / Default
+                </a>
+                <a id="google-calendar-btn" href="#" target="_blank" class="block w-full py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition-colors flex justify-center items-center gap-2">
+                    🔵 Google Calendar
+                </a>
+                <a id="outlook-calendar-btn" href="#" target="_blank" class="block w-full py-2 bg-blue-800 text-white font-bold rounded hover:bg-blue-900 transition-colors flex justify-center items-center gap-2">
+                    📧 Outlook
+                </a>
+            </div>
         </div>
     </div>
 
